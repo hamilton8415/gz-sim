@@ -1,190 +1,147 @@
-\page underwater_vehicles Underwater vehicles
-# Simulating Autnomous Underwater Vehicles
+\page added_mass Added Mass 
 
-Gazebo now supports basic simulation of underwater vehicles.
-This capability is based on the equations described in Fossen's ["Guidance and
-Control of Ocean Vehicles"](https://www.wiley.com/en-sg/Guidance+and+Control+of+Ocean+Vehicles-p-9780471941132).
-This tutorial will guide you through the steps you
-need to setup simulation of an underwater vehicle. In this tutorial, we will
-guide you through the setup of the [MBARI Tethys](https://app.gazebosim.org/accurrent/fuel/models/MBARI%20Tethys%20LRAUV).
-One can find the final sdf file for this tutorial in the
-`examples/worlds/auv_controls.sdf` file.
+When a body accelerates through a fluid, it neccessarily accelerates some of that fluid along with it. Accelerating this surrounding fluid introduces an additional inertia force that would not be present if the body was accelerating in a vaccuum.  For many terrestiral robots, this additional inertia can be neglected as insignificant because the density of the robot components is much larger than the surrounding air.  However, whenever the density of the body is comparable to the density of the surrounding fluid, these added inertial forces are important.  Typical examples are underwater vehicles, and ballons and airships.
 
-# Understanding Hydrodynamic Forces
-The behaviour of a moving body through water is different from the behaviour of
-a ground based vehicle. In particular bodies moving underwater experience much
-more forces derived from drag, buoyancy and lift. The way these forces act on
-a body can be seen in the following diagram:
-![force diagram](https://raw.githubusercontent.com/gazebosim/gz-sim/ign-gazebo5/tutorials/files/underwater/MBARI%20forces.png)
+As of the Garden version of Gazebo, the ability to include a characterization of these added inertial forces is included.  This tutorial explains how these terms are specified, and provides some examples illustrating the effects of added-mass.
 
-# Setting up the buoyancy plugin
-The buoyancy plugin in Gazebo uses the collision mesh to calculate the volume
-of the vehicle. Additionally, it needs to know the density of the fluid in which
-it is moving. By default this is set to 1000kgm^-3. However, in real life this
-may vary depending on many factors like depth, salinity of water etc. To add
-the buoyancy plugin all one needs to do is add the following under the `<world>`
-tag:
+# Added Mass Description
+As indicated above, added mass phenomenon is a close analog to the mass of a rigid body, and includes translational terms (added mass), and rotatational terms (added mass-moment-of-inertia).  An important differenc however is that unlike inertia due to the mass and mass-distribution of a body, inertia due to the surrounding fluid is a function of the geometry of the body only.  Additionally, translational added mass can have different values depending on the direction of motion of the body.  Further, cross-coupling terms can be present in which acceleration in one direction results in an inertial force in any other degree of freedom.
+
+The characterizations of the added mass, and added mass-moment-of-inertia in the equations of motion for a single body appears as a addition 6X6 matrix $\bf{\mu}$ that is added to the usual mass matrix $\bf M$
+
+$$ (\bf{M} + \bf{\mu})   \ddot{\bf x} = \sum{F({\bf x}, t)} $$
+
+where \\(\bf{M}\\) is the body mass inertia matrix, \\(\mu\\) is the fluid added mass matrix,
+\\(\sum{F}\\) is the sum of all forces applied to the body, and \\(\ddot{\bf x}\\) is the resulting acceleration, with:
+
+$$
+    {\bf x}^T
+    =
+    \begin{bmatrix}
+      x           & y           & z           & p           &  q         & r
+    \end{bmatrix}
+$$
+
+where,
+
+* \\(x\\) : Position in X axis
+* \\(y\\) : Position in Y axis
+* \\(z\\) : Position in Z axis
+* \\(p\\) : Rotation about X axis
+* \\(q\\) : Rotation about Y axis
+* \\(r\\) : Rotation about Z axis
+
+
+
+$$
+    M
+    =
+    \begin{bmatrix}
+      m           & 0           & 0           & 0           &  m z\_{CoM} & -m y\_{CoM} \\\
+      0           & m           & 0           & -m z\_{CoM} & 0           &  m x\_{CoM} \\\
+      0           & 0           & m           &  m y\_{CoM} & -m x\_{CoM} & 0           \\\
+      0           & -m z\_{CoM} &  m y\_{CoM} & I\_{xx}     & I\_{xy}     & I\_{xz}     \\\
+       m z\_{CoM} & 0           & -m x\_{CoM} & I\_{xy}     & I\_{yy}     & I\_{yz}     \\\
+      -m y\_{CoM} &  mx\_{CoM}  & 0           & I\_{xz}     & I\_{yz}     & I\_{zz}
+    \end{bmatrix}
+$$
+
+where
+
+* \\(m\\) : Body's mass
+* \\(I\_{xx}\\) : Principal mass moment of inertia about the X axis
+* \\(I\_{xy}\\) : Product mass moment of inertia about the X and Y axes, and vice-versa
+* \\(I\_{xz}\\) : Product mass moment of inertia about the X and Z axes, and vice-versa
+* \\(I\_{yy}\\) : Principal mass moment of inertia about the Y axis
+* \\(I\_{yz}\\) : Product mass moment of inertia about the Y and Z axes, and vice-versa
+* \\(I\_{zz}\\) : Principal mass moment of inertia about the Z axis
+* \\(x\_{CoM}\\) : Center of mass X coordinate
+* \\(y\_{CoM}\\) : Center of mass Y coordinate
+* \\(z\_{CoM}\\) : Center of mass Z coordinate
+
+
+$$
+    \bf{\mu}
+    =
+    \begin{bmatrix}
+      xx & xy & xz & xp & xq & xr \\\
+      xy & yy & yz & yp & yq & yr \\\
+      xz & yz & zz & zp & zq & zr \\\
+      xp & yp & zp & pp & pq & pr \\\
+      xq & yq & zq & pq & qq & qr \\\
+      xr & yr & zr & pr & qr & rr
+    \end{bmatrix}
+$$
+
+where
+
+* \\(xx\\) : added mass in the X axis due to linear acceleration in the X axis
+* \\(xy\\) : added mass in the X axis due to linear acceleration in the Y axis, and vice-versa
+* \\(xz\\) : added mass in the X axis due to linear acceleration in the Z axis, and vice-versa
+* \\(xp\\) : added mass in the X axis due to angular acceleration about the X axis, and vice-versa
+* \\(xq\\) : added mass in the X axis due to angular acceleration about the Y axis, and vice-versa
+* \\(xr\\) : added mass in the X axis due to angular acceleration about the Z axis, and vice-versa
+* \\(yy\\) : added mass in the Y axis due to linear acceleration in the Y axis
+* \\(yz\\) : added mass in the Y axis due to linear acceleration in the Z axis, and vice-versa
+* \\(yp\\) : added mass in the Y axis due to angular acceleration about the X axis, and vice-versa
+* \\(yq\\) : added mass in the Y axis due to angular acceleration about the Y axis, and vice-versa
+* \\(yr\\) : added mass in the Y axis due to angular acceleration about the Z axis, and vice-versa
+* \\(zz\\) : added mass in the Z axis due to linear acceleration in the Z axis
+* \\(zp\\) : added mass in the Z axis due to angular acceleration about the X axis, and vice-versa
+* \\(zq\\) : added mass in the Z axis due to angular acceleration about the Y axis, and vice-versa
+* \\(zr\\) : added mass in the Z axis due to angular acceleration about the Z axis, and vice-versa
+* \\(pp\\) : added mass moment about the X axis due to angular acceleration about the X axis
+* \\(pq\\) : added mass moment about the X axis due to angular acceleration about the Y axis, and vice-versa
+* \\(pr\\) : added mass moment about the X axis due to angular acceleration about the Z axis, and vice-versa
+* \\(qq\\) : added mass moment about the Y axis due to angular acceleration about the Y axis
+* \\(qr\\) : added mass moment about the Y axis due to angular acceleration about the Z axis, and vice-versa
+* \\(rr\\) : added mass moment about the Z axis due to angular acceleration about the Z axis
+
+The unit of each matrix element matches its corresponding element on the mass matrix \\(\bf{M}\\).
+That is, elements on the top-left 3x3 corner are in \\(kg\\), the bottom-right ones are in
+\\(kg\cdotm^2\\), and the rest are in \\(kg\cdotm\\).
+
+
+![Coordinate Systems](files/added_mass/CoordSys.png)
+
+# Specification in Gazebo
 ```xml
-<plugin
-      filename="gz-sim-buoyancy-system"
-      name="gz::sim::systems::Buoyancy">
-    <uniform_fluid_density>1000</uniform_fluid_density>
-</plugin>
+<inertial>
+  <mass>10</mass>
+  <pose>1 1 1 0 0 0</pose>
+  <inertia>
+    <ixx>0.16666</ixx>
+    <ixy>0</ixy>
+    <ixz>0</ixz>
+    <iyy>0.16666</iyy>
+    <iyz>0</iyz>
+    <izz>0.16666</izz>
+  </inertia>
+  <fluid_added_mass>
+    <xx>1.0</xx>
+    <xy>0.0</xy>
+    <xz>0.0</xz>
+    <xp>0.0</xp>
+    <xq>0.0</xq>
+    <xr>0.0</xr>
+    <yy>1.0</yy>
+    <yz>0.0</yz>
+    <yp>0.0</yp>
+    <yq>0.0</yq>
+    <yr>0.0</yr>
+    <zz>1.0</zz>
+    <zp>0.0</zp>
+    <zq>0.0</zq>
+    <zr>0.0</zr>
+    <pp>0.1</pp>
+    <pq>0.0</pq>
+    <pr>0.0</pr>
+    <qq>0.1</qq>
+    <qr>0.0</qr>
+    <rr>0.1</rr>
+  </fluid_added_mass>
+</inertial>
 ```
-# Setting up the thrusters
-We need the vehicle to move, so we will be adding the `Thruster` plugin. The
-thruster plugin takes in a force and applies it along with calculating the desired
-rpm. Under the `<include>` or `<model>` tag add the following:
-```xml
-<plugin
-    filename="gz-sim-thruster-system"
-    name="gz::sim::systems::Thruster">
-    <namespace>tethys</namespace>
-    <joint_name>propeller_joint</joint_name>
-    <thrust_coefficient>0.004422</thrust_coefficient>
-    <fluid_density>1000</fluid_density>
-    <propeller_diameter>0.2</propeller_diameter>
-</plugin>
-```
-Now if we were to publish to `/model/tethys/joint/propeller_joint/cmd_pos`
-```
-gz topic -t /model/tethys/joint/propeller_joint/cmd_pos \
-   -m gz.msgs.Double -p 'data: -31'
-```
-we should see the model move. The thrusters are governed by the equation on
-page 246 of Fossen's book. In particular it relates force to rpm as follows:
-`Thrust = fluid_density * RPM^2 * thrust_constant * propeller blade size^4`.
-The plugin takes in commands in newtons. So if you have a different thrust
-curve you can still use the plugin with some type of adapter script. The thrust
-constant is normally determined by individual manufacturers. In this case we are
-using the Tethys's thrust coefficient. you may also build a test rig to measure
-your thruster's thrust coefficient.
+#  Example
 
-# Adding Hydrodynamic behaviour
-You may notice that the robot now keeps getting faster and faster. This is
-because there is no drag to oppose the thruster's force. We will be using
-Fossen's equations which describe the motion of a craft through the water for
-this. For better understanding of the parameters here, I would refer you to
-his book. Usually these parameters can be found via fluid simulation programs or
-experimental tests in a water tub.
-```xml
-<plugin
-filename="gz-sim-hydrodynamics-system"
-name="gz::sim::systems::Hydrodynamics">
-    <link_name>base_link</link_name>
-    <xDotU>-4.876161</xDotU>
-    <yDotV>-126.324739</yDotV>
-    <zDotW>-126.324739</zDotW>
-    <kDotP>0</kDotP>
-    <mDotQ>-33.46</mDotQ>
-    <nDotR>-33.46</nDotR>
-    <xUU>-6.2282</xUU>
-    <xU>0</xU>
-    <yVV>-601.27</yVV>
-    <yV>0</yV>
-    <zWW>-601.27</zWW>
-    <zW>0</zW>
-    <kPP>-0.1916</kPP>
-    <kP>0</kP>
-    <mQQ>-632.698957</mQQ>
-    <mQ>0</mQ>
-    <nRR>-632.698957</nRR>
-    <nR>0</nR>
-</plugin>
-```
-
-# Control surfaces
-Just like aeroplanes, an underwater vehicle may also use fins for stability and
-control. Fortunately, Gazebo already has a version of the LiftDrag plugin. In
-this tutorial, we will simply add two liftdrag plugins to the rudder and
-elevator of MBARI's Tethys. For more info about the liftdrag plugin inluding
-what the parameters mean you may look
-at [this gazebo classic tutorial](http://gazebosim.org/tutorials?tut=aerodynamics&cat=physics).
-Essentially when we tilt the fins, we should experience a lift force which
-will cause the vehicle to experience a torque and the vehicle should start
-turning when we move.
-
-```xml
-<!-- Vertical fin -->
-<plugin
-filename="gz-sim-lift-drag-system"
-name="gz::sim::systems::LiftDrag">
-    <air_density>1000</air_density>
-    <cla>4.13</cla>
-    <cla_stall>-1.1</cla_stall>
-    <cda>0.2</cda>
-    <cda_stall>0.03</cda_stall>
-    <alpha_stall>0.17</alpha_stall>
-    <a0>0</a0>
-    <area>0.0244</area>
-    <upward>0 1 0</upward>
-    <forward>1 0 0</forward>
-    <link_name>vertical_fins</link_name>
-    <cp>0 0 0</cp>
-</plugin>
-
-<!-- Horizontal fin -->
-<plugin
-filename="gz-sim-lift-drag-system"
-name="gz::sim::systems::LiftDrag">
-    <air_density>1000</air_density>
-    <cla>4.13</cla>
-    <cla_stall>-1.1</cla_stall>
-    <cda>0.2</cda>
-    <cda_stall>0.03</cda_stall>
-    <alpha_stall>0.17</alpha_stall>
-    <a0>0</a0>
-    <area>0.0244</area>
-    <upward>0 0 1</upward>
-    <forward>1 0 0</forward>
-    <link_name>horizontal_fins</link_name>
-    <cp>0 0 0</cp>
-</plugin>
-```
-The number in this case were kindly provided by MBARI for the Tethys.
-We also need to be able to control the position of the thruster fins so we will
-use the joint controller plugin.
-```xml
-<plugin
-filename="gz-sim-joint-position-controller-system"
-name="gz::sim::systems::JointPositionController">
-    <joint_name>horizontal_fins_joint</joint_name>
-    <p_gain>0.1</p_gain>
-</plugin>
-
-<plugin
-filename="gz-sim-joint-position-controller-system"
-name="gz::sim::systems::JointPositionController">
-    <joint_name>vertical_fins_joint</joint_name>
-    <p_gain>0.1</p_gain>
-</plugin>
-```
-We should now be able to wiggle the fins using the following command:
-```
-gz topic -t /model/tethys/joint/vertical_fins_joint/0/cmd_pos \
-  -m gz.msgs.Double -p 'data: -0.17'
-```
-
-# Testing the system out
-
-To control the rudder of the craft run the following
-```
-gz topic -t /model/tethys/joint/vertical_fins_joint/0/cmd_pos \
-   -m gz.msgs.Double -p 'data: -0.17'
-```
-To apply a thrust you may run the following command
-```
-gz topic -t /model/tethys/joint/propeller_joint/cmd_pos \
--m gz.msgs.Double -p 'data: -31'
-```
-The vehicle should move in a circle.
-
-# Ocean Currents
-
-When underwater, vehicles are often subject to ocean currents. The hydrodynamics
-plugin allows simulation of such currents. We can add a current simply by
-publishing the following:
-```
-gz topic -t /ocean_current -m gz.msgs.Vector3d -p 'x: 1, y:0, z:0'
-```
-You should observe your vehicle slowly drift to the side.
+# Summary
