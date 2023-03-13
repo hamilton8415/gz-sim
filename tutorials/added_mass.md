@@ -1,5 +1,3 @@
-<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
-
 \page added_mass Added Mass 
 
 When a body accelerates through a fluid, it neccessarily accelerates some of that fluid along with it. Accelerating this surrounding fluid introduces an additional inertia force that would not be present if the body was accelerating in a vaccuum.  For many terrestiral robots, this additional inertia can be neglected as insignificant because the density of the robot components is much larger than the surrounding air.  However, whenever the density of the body is comparable to the density of the surrounding fluid, these added inertial forces are important.  Typical examples are underwater vehicles, and ballons and airships.
